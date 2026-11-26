@@ -103,10 +103,22 @@ export interface DocumentSettings {
   pageNumberFormat: PageNumberFormat;
 }
 
+export type HumanizeIntensity = 'low' | 'medium' | 'high';
+
+export interface HumanizeSettings {
+  enabled: boolean;
+  intensity: HumanizeIntensity;
+  strikeThroughFrequency: number;
+  correctionFrequency: number;
+  spacingVariation: number;
+  baselineVariation: number;
+}
+
 export interface AppSettings {
   handwriting: HandwritingSettings;
   page: PageSettings;
   document: DocumentSettings;
+  humanize: HumanizeSettings;
 }
 
 export interface DocumentSnapshot {
@@ -121,6 +133,18 @@ export interface PageDimensions {
   heightPx: number;
 }
 
+export type HumanizeStrikeStyle = 'single' | 'double' | 'wave';
+
+export interface HumanizeWordAnnotation {
+  /** Word token index within the line (0-based among non-space word tokens) */
+  wordTokenIndex: number;
+  /** Whether this word token should be crossed out with a pen strike-through */
+  crossedOut: boolean;
+  strikeStyle: HumanizeStrikeStyle;
+  /** Optional small correction written neatly above the crossed-out word */
+  aboveCorrection?: string;
+}
+
 export interface RenderedLineLayout {
   text: string;
   x: number;
@@ -133,6 +157,8 @@ export interface RenderedLineLayout {
   isFirstLineOfParagraph: boolean;
   isLastLineOfParagraph: boolean;
   alignment: TextAlignment;
+  /** Optional humanize annotations keyed by word index on this line */
+  humanizeAnnotations?: HumanizeWordAnnotation[];
 }
 
 export interface RenderedPageLayout {
@@ -165,6 +191,7 @@ export interface HandwritingPreset {
   handwriting: Partial<HandwritingSettings>;
   page: Partial<PageSettings>;
   document?: Partial<DocumentSettings>;
+  humanize?: Partial<HumanizeSettings>;
 }
 
 export type ExportFormat = 'pdf' | 'png' | 'jpeg';

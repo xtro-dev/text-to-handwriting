@@ -28,6 +28,8 @@ import type {
   DocumentSettings,
   FontCategory,
   HandwritingSettings,
+  HumanizeIntensity,
+  HumanizeSettings,
   PageNumberFormat,
   PageNumberPosition,
   PageSettings,
@@ -38,6 +40,7 @@ import type {
 import { generateRandomSeed } from '../utils/randomize';
 import {
   ColorPickerField,
+  InfoTooltip,
   SectionDivider,
   SliderControl,
   ToggleSwitch,
@@ -50,6 +53,7 @@ interface CustomizationPanelProps {
   onUpdateHandwriting: (patch: Partial<HandwritingSettings>) => void;
   onUpdatePage: (patch: Partial<PageSettings>) => void;
   onUpdateDocument: (patch: Partial<DocumentSettings>) => void;
+  onUpdateHumanize: (patch: Partial<HumanizeSettings>) => void;
   className?: string;
 }
 
@@ -128,13 +132,14 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   onUpdateHandwriting,
   onUpdatePage,
   onUpdateDocument,
+  onUpdateHumanize,
   className = '',
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>('handwriting');
   const [fontListOpen, setFontListOpen] = useState(false);
   const [fontFilter, setFontFilter] = useState<'all' | FontCategory>('all');
 
-  const { handwriting, page, document: doc } = settings;
+  const { handwriting, page, document: doc, humanize } = settings;
   const activeFont = getFontMeta(handwriting.fontId);
   const activePaperPreset = getPaperPreset(page.paperType);
   const pageDims = getPageDimensions(page.pageSize, page.orientation);
@@ -490,6 +495,108 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
               displayValue={`${handwriting.marginJitter.toFixed(1)}px`}
               onChange={(v) => onUpdateHandwriting({ marginJitter: v })}
             />
+
+            <SectionDivider
+              title="Humanize Handwriting"
+              rightSlot={
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                  Optional
+                </span>
+              }
+            />
+
+            <ToggleSwitch
+              id="hw-humanize-toggle"
+              label="Humanize Handwriting"
+              description="Cross-outs, corrections, overwritten letters, and organic drift"
+              tooltip="Adds subtle human pen mistakes, realistic strike-throughs, small above/inline corrections, overwritten letters, and slight notebook-line misalignment."
+              checked={humanize.enabled}
+              onChange={(checked) => onUpdateHumanize({ enabled: checked })}
+            />
+
+            {humanize.enabled && (
+              <div className="rounded-xl border border-zinc-200/90 dark:border-zinc-800/90 bg-zinc-50/70 dark:bg-zinc-900/40 p-3 space-y-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                        Imperfection Intensity
+                      </span>
+                      <InfoTooltip text="Controls the overall strength of rotation, overwritten letters, pressure shifts, and notebook line drift." />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(['low', 'medium', 'high'] as HumanizeIntensity[]).map(
+                      (level) => {
+                        const selected = humanize.intensity === level;
+                        return (
+                          <button
+                            key={level}
+                            type="button"
+                            onClick={() => onUpdateHumanize({ intensity: level })}
+                            className={`h-7 rounded-lg text-xs font-medium capitalize border transition-colors cursor-pointer ${
+                              selected
+                                ? 'bg-zinc-900 text-white border-zinc-900 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100'
+                                : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                            }`}
+                          >
+                            {level}
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+
+                <SliderControl
+                  id="hum-strike-freq"
+                  label="Strike-Through Frequency"
+                  tooltip="How often false-start words or short phrases are crossed out with realistic pen strokes."
+                  value={humanize.strikeThroughFrequency}
+                  min={0}
+                  max={100}
+                  step={2}
+                  displayValue={`${humanize.strikeThroughFrequency}%`}
+                  onChange={(v) => onUpdateHumanize({ strikeThroughFrequency: v })}
+                />
+
+                <SliderControl
+                  id="hum-correction-freq"
+                  label="Correction Frequency"
+                  tooltip="How often crossed-out slips include a small handwritten correction written above or beside them."
+                  value={humanize.correctionFrequency}
+                  min={0}
+                  max={100}
+                  step={2}
+                  displayValue={`${humanize.correctionFrequency}%`}
+                  onChange={(v) => onUpdateHumanize({ correctionFrequency: v })}
+                />
+
+                <SliderControl
+                  id="hum-spacing-var"
+                  label="Spacing Variation"
+                  tooltip="Adds subtle inconsistency to character gaps and spaces between handwritten words."
+                  value={humanize.spacingVariation}
+                  min={0}
+                  max={100}
+                  step={2}
+                  displayValue={`${humanize.spacingVariation}%`}
+                  onChange={(v) => onUpdateHumanize({ spacingVariation: v })}
+                />
+
+                <SliderControl
+                  id="hum-baseline-var"
+                  label="Baseline Variation"
+                  tooltip="Adds natural vertical hand drift and slight misalignment from notebook ruled lines."
+                  value={humanize.baselineVariation}
+                  min={0}
+                  max={100}
+                  step={2}
+                  displayValue={`${humanize.baselineVariation}%`}
+                  onChange={(v) => onUpdateHumanize({ baselineVariation: v })}
+                />
+              </div>
+            )}
           </>
         )}
 

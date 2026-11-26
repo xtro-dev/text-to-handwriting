@@ -69,6 +69,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
     pageNumberPosition: 'bottom-right',
     pageNumberFormat: 'of-total',
   },
+  humanize: {
+    enabled: false,
+    intensity: 'medium',
+    strikeThroughFrequency: 28,
+    correctionFrequency: 24,
+    spacingVariation: 45,
+    baselineVariation: 45,
+  },
 };
 
 export const HANDWRITING_PRESETS: HandwritingPreset[] = [

@@ -17,6 +17,7 @@ export function mergeWithDefaultSettings(raw: unknown): AppSettings {
   const hw = isRecord(raw.handwriting) ? raw.handwriting : {};
   const pg = isRecord(raw.page) ? raw.page : {};
   const doc = isRecord(raw.document) ? raw.document : {};
+  const hum = isRecord(raw.humanize) ? raw.humanize : {};
 
   return {
     handwriting: {
@@ -30,6 +31,10 @@ export function mergeWithDefaultSettings(raw: unknown): AppSettings {
     document: {
       ...DEFAULT_SETTINGS.document,
       ...(doc as Partial<AppSettings['document']>),
+    },
+    humanize: {
+      ...DEFAULT_SETTINGS.humanize,
+      ...(hum as Partial<AppSettings['humanize']>),
     },
   };
 }

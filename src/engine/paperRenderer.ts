@@ -88,10 +88,10 @@ export function renderPaperBackground(
   const { width, height, rulesStartY, ruleSpacing } = pageLayout;
   const preset = getPaperPreset(page.paperType);
 
-  // 1. Base paper fill
+  // 1. Base paper fill (slight 1px bleed eliminates subpixel alpha fringe at high-DPI edges)
   ctx.save();
   ctx.fillStyle = page.backgroundColor;
-  ctx.fillRect(0, 0, width, height);
+  ctx.fillRect(-1, -1, width + 2, height + 2);
 
   // 2. Old parchment aging gradients & vignette
   if (page.paperType === 'old-paper') {

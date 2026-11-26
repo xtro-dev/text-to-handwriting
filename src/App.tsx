@@ -19,6 +19,7 @@ import type {
   DocumentSettings,
   HandwritingPreset,
   HandwritingSettings,
+  HumanizeSettings,
   PageSettings,
 } from './types/handwriting';
 import { generateRandomSeed, randomizeHandwritingSettings } from './utils/randomize';
@@ -221,6 +222,25 @@ export function App() {
     [commitSnapshot],
   );
 
+  const handleUpdateHumanize = useCallback(
+    (patch: Partial<HumanizeSettings>) => {
+      commitSnapshot(
+        (prev) => ({
+          ...prev,
+          settings: {
+            ...prev.settings,
+            humanize: {
+              ...prev.settings.humanize,
+              ...patch,
+            },
+          },
+        }),
+        'settings',
+      );
+    },
+    [commitSnapshot],
+  );
+
   const handleApplyPreset = useCallback(
     (preset: HandwritingPreset) => {
       commitSnapshot(
@@ -239,6 +259,10 @@ export function App() {
             document: {
               ...prev.settings.document,
               ...(preset.document ?? {}),
+            },
+            humanize: {
+              ...prev.settings.humanize,
+              ...(preset.humanize ?? {}),
             },
           },
         }),
@@ -427,6 +451,7 @@ export function App() {
           onUpdateHandwriting={handleUpdateHandwriting}
           onUpdatePage={handleUpdatePage}
           onUpdateDocument={handleUpdateDocument}
+          onUpdateHumanize={handleUpdateHumanize}
           className={`${
             mobilePane === 'customize' ? 'flex w-full' : 'hidden'
           } lg:flex lg:w-[310px] xl:w-[340px] shrink-0`}

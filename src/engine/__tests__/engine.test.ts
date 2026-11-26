@@ -4,6 +4,7 @@ import { PAGE_SIZES, PAPER_STYLES, getPageDimensions } from '../../constants/pap
 import { DEFAULT_SETTINGS, SAMPLE_TEMPLATES } from '../../constants/presets';
 import { randomizeHandwritingSettings } from '../../utils/randomize';
 import { mergeWithDefaultSettings } from '../../utils/storage';
+import { buildHumanizedParagraphWords, generateHumanSlip } from '../humanize';
 import { computePaginatedDocument, formatPageNumber } from '../layout';
 import { getLuminance, parseHexColor, seededBell, seededUnit } from '../prng';
 
@@ -149,5 +150,81 @@ describe('Settings persistence and randomization helpers', () => {
     expect(randomized.handwriting.variationSeed).not.toBe(
       DEFAULT_SETTINGS.handwriting.variationSeed,
     );
+  });
+});
+
+describe('Humanize Handwriting engine', () => {
+  it('is OFF by default and leaves baseline layout untouched when disabled', () => {
+    expect(DEFAULT_SETTINGS.humanize.enabled).toBe(false);
+    const sample = SAMPLE_TEMPLATES[0].text;
+    const doc = computePaginatedDocument(sample, DEFAULT_SETTINGS, fixedWidthMeasure);
+    for (const page of doc.pages) {
+      for (const line of page.lines) {
+        expect(line.humanizeAnnotations).toBeUndefined();
+      }
+    }
+  });
+
+  it('generates realistic human slips that differ from the source word', () => {
+    const words = ['Connections', 'thinking', 'different', 'between', 'system'];
+    for (let i = 0; i < words.length; i++) {
+      const slip = generateHumanSlip(words[i], 1000 + i);
+      expect(slip.length).toBeGreaterThanOrEqual(2);
+      expect(slip).not.toBe(words[i]);
+    }
+  });
+
+  it('produces deterministic cross-outs and corrections without margin overflow when enabled', () => {
+    const settings = structuredClone(DEFAULT_SETTINGS);
+    settings.humanize = {
+      enabled: true,
+      intensity: 'high',
+      strikeThroughFrequency: 100,
+      correctionFrequency: 80,
+      spacingVariation: 60,
+      baselineVariation: 60,
+    };
+
+    const longSample = SAMPLE_TEMPLATES.find((s) => s.id === 'long-multipage')?.text ?? '';
+    const docA = computePaginatedDocument(longSample, settings, fixedWidthMeasure);
+    const docB = computePaginatedDocument(longSample, settings, fixedWidthMeasure);
+
+    // Deterministic for the same seed
+    expect(docA.pages.length).toBe(docB.pages.length);
+    expect(docA.pages[0].lines[0].text).toBe(docB.pages[0].lines[0].text);
+
+    const maxAllowedWidth =
+      docA.pages[0].width -
+      settings.page.marginLeft -
+      settings.page.marginRight;
+    let totalCrossOuts = 0;
+    let totalAboveCorrections = 0;
+
+    for (const page of docA.pages) {
+      for (const line of page.lines) {
+        expect(line.width).toBeLessThanOrEqual(maxAllowedWidth + 0.01);
+        for (const ann of line.humanizeAnnotations ?? []) {
+          if (ann.crossedOut) totalCrossOuts++;
+          if (ann.aboveCorrection) totalAboveCorrections++;
+        }
+      }
+    }
+
+    expect(totalCrossOuts).toBeGreaterThan(0);
+    expect(totalAboveCorrections).toBeGreaterThan(0);
+  });
+
+  it('produces zero strike-throughs when strikeThroughFrequency is 0', () => {
+    const words = Array.from({ length: 50 }, (_, idx) => `example${idx}`).map(() => 'example');
+    const tokens = buildHumanizedParagraphWords(words, 0, 12345, {
+      enabled: true,
+      intensity: 'high',
+      strikeThroughFrequency: 0,
+      correctionFrequency: 100,
+      spacingVariation: 50,
+      baselineVariation: 50,
+    });
+    expect(tokens.every((t) => !t.crossedOut)).toBe(true);
+    expect(tokens.length).toBe(words.length);
   });
 });

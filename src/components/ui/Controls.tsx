@@ -1,5 +1,26 @@
 import React from 'react';
+import { Info } from 'lucide-react';
 import type { ColorSwatch } from '../../constants/papers';
+
+export const InfoTooltip: React.FC<{ text: string }> = ({ text }) => (
+  <span className="relative inline-flex items-center group/tip">
+    <span
+      tabIndex={0}
+      role="note"
+      aria-label={text}
+      title={text}
+      className="inline-flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 cursor-help focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 rounded-full"
+    >
+      <Info className="w-3 h-3" />
+    </span>
+    <span
+      role="tooltip"
+      className="pointer-events-none opacity-0 group-hover/tip:opacity-100 group-focus-within/tip:opacity-100 transition-opacity duration-150 absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-48 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-900 dark:bg-zinc-800 px-2.5 py-1.5 text-[11px] font-normal leading-snug text-zinc-100 shadow-lg z-50"
+    >
+      {text}
+    </span>
+  </span>
+);
 
 interface SliderControlProps {
   id?: string;
@@ -11,6 +32,7 @@ interface SliderControlProps {
   displayValue?: string;
   disabled?: boolean;
   hint?: string;
+  tooltip?: string;
   onChange: (value: number) => void;
 }
 
@@ -24,18 +46,22 @@ export const SliderControl: React.FC<SliderControlProps> = ({
   displayValue,
   disabled = false,
   hint,
+  tooltip,
   onChange,
 }) => {
   return (
     <div className={`space-y-1.5 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
       <div className="flex items-center justify-between gap-2">
-        <label
-          htmlFor={id}
-          className="text-xs font-medium text-zinc-700 dark:text-zinc-300 select-none"
-        >
-          {label}
-        </label>
-        <span className="font-mono text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400">
+        <div className="inline-flex items-center gap-1.5 min-w-0">
+          <label
+            htmlFor={id}
+            className="text-xs font-medium text-zinc-700 dark:text-zinc-300 select-none"
+          >
+            {label}
+          </label>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </div>
+        <span className="font-mono text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400 shrink-0">
           {displayValue ?? value}
         </span>
       </div>
@@ -63,6 +89,7 @@ interface ToggleSwitchProps {
   id?: string;
   label: string;
   description?: string;
+  tooltip?: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
 }
@@ -71,18 +98,22 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
   id,
   label,
   description,
+  tooltip,
   checked,
   onChange,
 }) => {
   return (
     <div className="flex items-center justify-between gap-3 py-1">
       <div className="min-w-0">
-        <label
-          htmlFor={id}
-          className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer select-none"
-        >
-          {label}
-        </label>
+        <div className="inline-flex items-center gap-1.5">
+          <label
+            htmlFor={id}
+            className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 cursor-pointer select-none"
+          >
+            {label}
+          </label>
+          {tooltip && <InfoTooltip text={tooltip} />}
+        </div>
         {description && (
           <p className="text-[11px] text-zinc-400 dark:text-zinc-500 leading-snug">
             {description}

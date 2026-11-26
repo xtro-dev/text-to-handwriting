@@ -3,10 +3,17 @@ import { getPageDimensions, getPaperPreset } from '../constants/papers';
 import type {
   AppSettings,
   HandwritingFontMeta,
+  HumanizeWordAnnotation,
   PaginatedDocument,
   RenderedLineLayout,
   RenderedPageLayout,
 } from '../types/handwriting';
+import {
+  buildHumanizedParagraphWords,
+  collectLineAnnotations,
+  getHumanizedLineDriftY,
+  type HumanizedWordToken,
+} from './humanize';
 
 export type TextMeasureFn = (text: string, fontSpec: string) => number;
 
@@ -69,6 +76,7 @@ interface WrappedParagraphLine {
   paragraphIndex: number;
   isFirstLineOfParagraph: boolean;
   isLastLineOfParagraph: boolean;
+  humanizeAnnotations?: HumanizeWordAnnotation[];
 }
 
 function wrapParagraph(
@@ -81,6 +89,8 @@ function wrapParagraph(
   fontSpec: string,
   letterSpacing: number,
   wordSpacing: number,
+  humanizeSettings?: AppSettings['humanize'],
+  variationSeed = 0,
 ): WrappedParagraphLine[] {
   const normalized = rawParagraph.replace(/\t/g, '    ');
   if (normalized.trim().length === 0) {
@@ -100,9 +110,9 @@ function wrapParagraph(
   const leadingMatch = /^( +)/.exec(normalized);
   const leadingSpaces = leadingMatch ? leadingMatch[1] : '';
   const body = normalized.slice(leadingSpaces.length).trimEnd();
-  const words = body.split(/ +/).filter(Boolean);
+  const rawWords = body.split(/ +/).filter(Boolean);
 
-  if (words.length === 0) {
+  if (rawWords.length === 0) {
     return [
       {
         text: '',
@@ -115,6 +125,19 @@ function wrapParagraph(
     ];
   }
 
+  const wordTokens: HumanizedWordToken[] = humanizeSettings?.enabled
+    ? buildHumanizedParagraphWords(
+        rawWords,
+        paragraphIndex,
+        variationSeed,
+        humanizeSettings,
+      )
+    : rawWords.map((w) => ({
+        text: w,
+        crossedOut: false,
+        strikeStyle: 'single',
+      }));
+
   const lines: WrappedParagraphLine[] = [];
   const effectiveIndent =
     alignment === 'left' || alignment === 'justify'
@@ -123,6 +146,7 @@ function wrapParagraph(
 
   let isFirstLine = true;
   let currentLine = leadingSpaces;
+  let currentLineTokens: HumanizedWordToken[] = [];
 
   const getAvailableWidth = (first: boolean) =>
     Math.max(40, contentWidth - (first ? effectiveIndent : 0));
@@ -144,13 +168,18 @@ function wrapParagraph(
       paragraphIndex,
       isFirstLineOfParagraph: isFirstLine,
       isLastLineOfParagraph: isLast,
+      humanizeAnnotations: humanizeSettings?.enabled
+        ? collectLineAnnotations(currentLineTokens)
+        : undefined,
     });
     isFirstLine = false;
     currentLine = '';
+    currentLineTokens = [];
   };
 
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i];
+  for (let i = 0; i < wordTokens.length; i++) {
+    const token = wordTokens[i];
+    const word = token.text;
     const avail = getAvailableWidth(isFirstLine);
     const separator =
       currentLine.length === 0 || currentLine.endsWith(' ') ? '' : ' ';
@@ -165,6 +194,7 @@ function wrapParagraph(
 
     if (candidateWidth <= avail) {
       currentLine = candidate;
+      currentLineTokens.push(token);
       continue;
     }
 
@@ -185,6 +215,7 @@ function wrapParagraph(
 
     if (singleWordWidth <= freshAvail) {
       currentLine = word;
+      currentLineTokens.push(token);
     } else {
       // Break ultra-long unbroken tokens (URLs, long strings) cleanly by character
       const chars = Array.from(word);
@@ -336,6 +367,8 @@ export function computePaginatedDocument(
       fontSpec,
       handwriting.letterSpacing,
       handwriting.wordSpacing,
+      settings.humanize,
+      handwriting.variationSeed,
     );
     wrappedLines.push(...pLines);
   });
@@ -401,10 +434,20 @@ export function computePaginatedDocument(
         x = safeMarginLeft + Math.max(0, contentWidth - line.width);
       }
 
+      const lineDriftY = settings.humanize?.enabled
+        ? getHumanizedLineDriftY(
+            globalLineIndex,
+            line.paragraphIndex,
+            handwriting.variationSeed,
+            settings.humanize,
+          )
+        : 0;
+      const lineY = Math.min(bottomLimitY + 2, cursorY + lineDriftY);
+
       currentLines.push({
         text: line.text,
         x,
-        y: cursorY,
+        y: lineY,
         width: line.width,
         maxWidth: line.maxWidth,
         lineIndex: globalLineIndex,
@@ -413,6 +456,7 @@ export function computePaginatedDocument(
         isFirstLineOfParagraph: line.isFirstLineOfParagraph,
         isLastLineOfParagraph: line.isLastLineOfParagraph,
         alignment: doc.alignment,
+        humanizeAnnotations: line.humanizeAnnotations,
       });
     }
 
